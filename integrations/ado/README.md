@@ -102,22 +102,6 @@ docker run -d --name azp-agent-2 --env-file .ado.env azp-agent:linux
 
 Each container represents one concurrent build slot.
 
-### Using Docker Compose
-
-Create a `docker-compose.yml`:
-
-```yaml
-version: '3.8'
-services:
-  azp-agent:
-    build: .
-    env_file: .ado.env
-    deploy:
-      replicas: 3  # Run 3 agents
-    restart: unless-stopped
-```
-
-Run with: `docker-compose up -d --scale azp-agent=3`
 
 ### Persistent Work Directory
 
