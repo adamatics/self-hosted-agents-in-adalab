@@ -1,0 +1,42 @@
+FROM ubuntu:24.04
+ENV DEBIAN_FRONTEND=noninteractive
+ARG VERSION="2.325.0"
+
+RUN apt update && apt upgrade -y
+RUN apt install -y \
+    bash \
+    build-essential \
+    coreutils \
+    curl \
+    git \
+    jq \
+    nano \
+    openssl \
+    software-properties-common \
+    tar \
+    unzip \
+    wget \
+    zip
+
+WORKDIR /tmp/runner
+RUN curl -o actions-runner-linux-x64.tar.gz -L https://github.com/actions/runner/releases/download/v${VERSION}/actions-runner-linux-x64-${VERSION}.tar.gz
+RUN tar -xzf ./actions-runner-linux-x64.tar.gz && rm -rf actions-runner-linux-x64.tar.gz 
+RUN ./bin/installdependencies.sh
+RUN apt clean
+
+ENV USERNAME=agent
+ENV GROUPAME=agent
+RUN adduser ${USERNAME}
+RUN passwd -d ${USERNAME}
+RUN mv /tmp/runner /home/${USERNAME}/runner
+RUN chmod -R 775 "/home/${USERNAME}"
+RUN chown -R ${USERNAME}:${GROUPNAME} "/home/${USERNAME}"
+
+USER ${USERNAME}
+ENV APP_DIR=/home/${USERNAME}/runner
+WORKDIR ${APP_DIR}
+
+# The port is required by AdaLab, but will not be used
+EXPOSE 8888 
+ENTRYPOINT ["bash", "-c"]
+CMD ["${APP_DIR}/config.sh --unattended --url ${GH_REPO} --token ${GH_TOKEN} --name ${AGENT_NAME} --labels ${AGENT_LABELS} && ${APP_DIR}/run.sh"]
