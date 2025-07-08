@@ -8,9 +8,9 @@ This repository provides containerized examples of self-hosted CI/CD agents for 
 |----------------|-------------------------|------------------------------------|
 | Azure DevOps   | ✅ Implemented & Tested | [integrations/ado](integrations/ado) |
 | GitHub Actions | ✅ Implemented & Tested | [integrations/github](integrations/github) |
-| GitLab CI      | 🚧 Planned              | [integrations/gitlab](integrations/gitlab) |
+| GitLab CI      | ✅ Implemented & Tested | [integrations/gitlab](integrations/gitlab) |
 
-Only the Azure DevOps integration is currently implemented and tested. See the README in each integration directory for detailed setup instructions.
+All three integrations provide runnable examples of self-hosted agents. See the README in each integration directory for detailed setup instructions.
 
 ## Repository Layout
 
@@ -18,7 +18,7 @@ Only the Azure DevOps integration is currently implemented and tested. See the R
 integrations/
 ├── ado/    # Azure DevOps agent (implemented)
 ├── github/ # GitHub Actions runner (implemented)
-└── gitlab/ # GitLab CI runner (planned)
+└── gitlab/ # GitLab CI runner (implemented)
 ```
 
 ## Security Principles (General)
