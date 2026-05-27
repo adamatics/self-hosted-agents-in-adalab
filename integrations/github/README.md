@@ -11,7 +11,7 @@ The GitHub Actions agent runs in a container based on Ubuntu 24.04. It automatic
 | File | Purpose |
 |------|---------|
 | `Containerfile` |  Installs GitHub Actions runner plus its dependencies, switches to an unprivileged user |
-| `entrypoint.sh` | Entry point of the image. It allows setting GH_PAT for generating the registration token. |
+| `entrypoint.sh` | Entrypoint of the image. It allows setting GH_PAT for generating the registration token. |
 ## Quick Start
 
 ### Prerequisites
