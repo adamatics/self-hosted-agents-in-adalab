@@ -29,6 +29,8 @@ ENV GROUPAME=agent
 RUN adduser ${USERNAME}
 RUN passwd -d ${USERNAME}
 RUN mv /tmp/runner /home/${USERNAME}/runner
+COPY entrypoint.sh /home/${USERNAME}/runner/entrypoint.sh
+
 RUN chmod -R 775 "/home/${USERNAME}"
 RUN chown -R ${USERNAME}:${GROUPNAME} "/home/${USERNAME}"
 
@@ -38,5 +40,5 @@ WORKDIR ${APP_DIR}
 
 # The port is required by AdaLab, but will not be used
 EXPOSE 8888 
-ENTRYPOINT ["bash", "-c"]
+ENTRYPOINT ["./entrypoint.sh"]
 CMD ["${APP_DIR}/config.sh --unattended --url ${GH_REPO} --token ${GH_TOKEN} --name ${AGENT_NAME} --labels ${AGENT_LABELS} && ${APP_DIR}/run.sh"]
