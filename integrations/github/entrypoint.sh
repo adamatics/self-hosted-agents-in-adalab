@@ -9,7 +9,7 @@ if [ -n "${GH_PAT}" ]; then
         -H "Authorization: Bearer ${GH_PAT}" \
         -H "Accept: application/vnd.github+json" \
         "https://api.github.com/repos/${GH_OWNER}/${GH_REPO_NAME}/actions/runners/registration-token")
-    echo "API response: ${API_RESPONSE}"
+    echo "Registration token fetched successfully"
     export GH_TOKEN=$(echo "${API_RESPONSE}" | jq -r .token)
     if [ -z "${GH_TOKEN}" ] || [ "${GH_TOKEN}" = "null" ]; then
         echo "Error: failed to fetch registration token"
