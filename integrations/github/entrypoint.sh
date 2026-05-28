@@ -78,4 +78,8 @@ else
     export GH_CONFIG_URL="${GH_REPO}"
 fi
 
+# Unset credentials — only needed to obtain GH_TOKEN above.
+# Without this, any workflow job running on this runner could read them via env.
+unset GH_APP_CLIENT_ID GH_APP_INSTALLATION_ID GH_APP_PRIVATE_KEY GH_PAT
+
 exec bash -c "$@"
