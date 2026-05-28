@@ -55,7 +55,15 @@ A GitHub App authenticates as a non-human identity with no ties to any individua
 |----------|-------------|
 | `GH_APP_CLIENT_ID` | The Client ID from the App's settings page (a string starting with `Iv`) |
 | `GH_APP_INSTALLATION_ID` | The numeric installation ID |
-| `GH_APP_PRIVATE_KEY` | The full PEM content of the downloaded private key |
+| `GH_APP_PRIVATE_KEY` | The base64-encoded PEM private key (see below) |
+
+The PEM private key must be base64-encoded before storing it as an environment variable, since multiline values are not reliably preserved across container runtimes:
+
+```bash
+GH_APP_PRIVATE_KEY=$(base64 -w 0 < your-app.private-key.pem)
+```
+
+The entrypoint decodes it at runtime before use.
 
 The entrypoint generates a short-lived JWT, exchanges it for an installation access token, and uses that to fetch the runner registration token — fully non-interactive and restartable.
 

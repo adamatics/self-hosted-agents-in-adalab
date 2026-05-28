@@ -1,6 +1,72 @@
 #!/bin/bash
 set -e
 
+# --- Validation helpers ---
+
+require_var() {
+    local name="$1" value="$2" context="$3"
+    if [ -z "${value}" ]; then
+        echo "Error [${context}]: ${name} is required but not set"
+        exit 1
+    fi
+}
+
+validate_base64() {
+    local name="$1" value="$2" context="$3"
+    if ! printf '%s' "${value}" | base64 -d > /dev/null 2>&1; then
+        echo "Error [${context}]: ${name} is not valid base64 — encode the PEM file with: base64 -w 0 < key.pem"
+        exit 1
+    fi
+}
+
+validate_target() {
+    if [ -z "${GH_ORG}" ] && [ -z "${GH_REPO}" ]; then
+        echo "Error: GH_ORG or GH_REPO must be set to specify where the runner should register"
+        exit 1
+    fi
+    if [ -n "${GH_ORG}" ] && [ -n "${GH_REPO}" ]; then
+        echo "Error: set either GH_ORG (org-wide runner) or GH_REPO (repo runner), not both"
+        exit 1
+    fi
+}
+
+# --- Auth flow detection and validation ---
+
+detect_auth_flow() {
+    local has_app_client_id has_app_installation_id has_app_key has_pat has_token
+    [ -n "${GH_APP_CLIENT_ID}" ]      && has_app_client_id=1
+    [ -n "${GH_APP_INSTALLATION_ID}" ] && has_app_installation_id=1
+    [ -n "${GH_APP_PRIVATE_KEY}" ]    && has_app_key=1
+    [ -n "${GH_PAT}" ]                && has_pat=1
+    [ -n "${GH_TOKEN}" ]              && has_token=1
+
+    local app_vars_set=$(( ${has_app_client_id:-0} + ${has_app_installation_id:-0} + ${has_app_key:-0} ))
+
+    if [ "${app_vars_set}" -gt 0 ] && [ "${app_vars_set}" -lt 3 ]; then
+        echo "Error: GitHub App auth requires all three variables. Missing:"
+        [ -z "${has_app_client_id}" ]      && echo "  - GH_APP_CLIENT_ID"
+        [ -z "${has_app_installation_id}" ] && echo "  - GH_APP_INSTALLATION_ID"
+        [ -z "${has_app_key}" ]             && echo "  - GH_APP_PRIVATE_KEY"
+        exit 1
+    fi
+
+    if [ "${app_vars_set}" -eq 3 ]; then
+        echo "app"
+    elif [ -n "${has_pat}" ]; then
+        echo "pat"
+    elif [ -n "${has_token}" ]; then
+        echo "token"
+    else
+        echo "Error: no auth method configured. Set one of:"
+        echo "  - GH_APP_CLIENT_ID + GH_APP_INSTALLATION_ID + GH_APP_PRIVATE_KEY  (GitHub App)"
+        echo "  - GH_PAT                                                           (Personal Access Token)"
+        echo "  - GH_TOKEN                                                         (manual registration token)"
+        exit 1
+    fi
+}
+
+# --- Token fetch functions ---
+
 b64url() {
     base64 -w 0 | tr '+' '-' | tr '/' '_' | tr -d '='
 }
@@ -14,7 +80,7 @@ get_token_via_app() {
     header=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
     payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' "${iat}" "${exp}" "${GH_APP_CLIENT_ID}" | b64url)
     sig_input="${header}.${payload}"
-    signature=$(printf '%s' "${sig_input}" | openssl dgst -sha256 -sign <(printf '%s' "${GH_APP_PRIVATE_KEY}") -binary | b64url)
+    signature=$(printf '%s' "${sig_input}" | openssl dgst -sha256 -sign <(printf '%s' "${GH_APP_PRIVATE_KEY}" | base64 -d) -binary | b64url)
     jwt="${sig_input}.${signature}"
 
     echo "Fetching installation access token using GitHub App (installation ${GH_APP_INSTALLATION_ID})..."
@@ -61,16 +127,28 @@ get_registration_token() {
     printf '%s' "${reg_token}"
 }
 
-if [ -n "${GH_APP_CLIENT_ID}" ] && [ -n "${GH_APP_INSTALLATION_ID}" ] && [ -n "${GH_APP_PRIVATE_KEY}" ]; then
-    bearer=$(get_token_via_app)
-    export GH_TOKEN=$(get_registration_token "${bearer}")
-elif [ -n "${GH_PAT}" ]; then
-    echo "Fetching registration token using PAT..."
-    export GH_TOKEN=$(get_registration_token "${GH_PAT}")
-elif [ -z "${GH_TOKEN}" ]; then
-    echo "Error: set GH_APP_ID+GH_APP_INSTALLATION_ID+GH_APP_PRIVATE_KEY, GH_PAT, or GH_TOKEN"
-    exit 1
-fi
+# --- Main ---
+
+validate_target
+
+AUTH_FLOW=$(detect_auth_flow)
+
+case "${AUTH_FLOW}" in
+    app)
+        validate_base64 "GH_APP_PRIVATE_KEY" "${GH_APP_PRIVATE_KEY}" "GitHub App auth"
+        bearer=$(get_token_via_app)
+        export GH_TOKEN=$(get_registration_token "${bearer}")
+        ;;
+    pat)
+        echo "Fetching registration token using PAT..."
+        export GH_TOKEN=$(get_registration_token "${GH_PAT}")
+        ;;
+    token)
+        echo "Using provided GH_TOKEN directly"
+        ;;
+esac
+
+require_var "AGENT_NAME" "${AGENT_NAME}" "runner config"
 
 if [ -n "${GH_ORG}" ]; then
     export GH_CONFIG_URL="https://github.com/${GH_ORG}"
