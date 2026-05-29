@@ -2,6 +2,21 @@
 
 This directory contains the containerized GitHub Actions self-hosted agent setup for AdaLab.
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Files](#files)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [1. Build the Container Image](#1-build-the-container-image)
+  - [2. Authenticate the Runner](#2-authenticate-the-runner)
+  - [3. Deploy the Agent](#3-deploy-the-agent)
+  - [4. Verify Connection](#4-verify-connection)
+- [Required PAT permissions](#required-pat-permissions)
+- [Extending the Image](#extending-the-image)
+- [Tips and Troubleshooting](#tips-and-troubleshooting)
+- [Reference](#reference)
+
 ## Overview
 
 The GitHub Actions agent runs in a container based on Ubuntu 24.04. It automatically downloads the requested agent version, registers with the GitHub repository or organisation of interest, and starts listening for build jobs.
@@ -150,6 +165,26 @@ API reference: [`POST /orgs/{org}/actions/runners/registration-token`](https://d
 | Fine-grained PAT | `Administration` → **Read and write** on the target repository |
 
 API reference: [`POST /repos/{owner}/{repo}/actions/runners/registration-token`](https://docs.github.com/en/rest/actions/self-hosted-runners?apiVersion=2022-11-28#create-a-registration-token-for-a-repository)
+
+## Extending the Image
+
+If your workflows require tools beyond what the base image provides (e.g. Python, Node.js, Docker CLI, cloud CLIs), use this image as a base and install what you need on top.
+
+```dockerfile
+FROM gh-actions-agent:latest
+
+USER root
+
+RUN apt install -y python3 python3-pip
+
+USER agent
+```
+
+A few things to keep in mind:
+
+- **Switch to `root` for installs**, then switch back to `agent` before the end of the file. The base image drops privileges to the `agent` user, and most package managers require root.
+- **Add labels** to your extended image and set `AGENT_LABELS` accordingly when deploying, so workflows can target runners that have the right tools (e.g. `--labels python,gpu`).
+- **Pin versions** of any installed tools to keep runner behaviour predictable across rebuilds.
 
 ## Tips and Troubleshooting
 
