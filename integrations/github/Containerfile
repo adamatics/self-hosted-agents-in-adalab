@@ -41,4 +41,4 @@ WORKDIR ${APP_DIR}
 # The port is required by AdaLab, but will not be used
 EXPOSE 8888 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["${APP_DIR}/config.sh --unattended --url ${GH_REPO} --token ${GH_TOKEN} --name ${AGENT_NAME} --labels ${AGENT_LABELS} && ${APP_DIR}/run.sh"]
+CMD ["${APP_DIR}/config.sh --unattended --url ${GH_CONFIG_URL} --token ${GH_TOKEN} --name ${AGENT_NAME} --labels ${AGENT_LABELS} && ${APP_DIR}/run.sh"]
