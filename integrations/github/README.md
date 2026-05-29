@@ -123,6 +123,7 @@ Run the agent (locally or as an app) passing the following environment variables
 |----------|----------|-------------|
 | `AGENT_NAME` | Yes | Name displayed in GitHub under **Actions > Runners** |
 | `AGENT_LABELS` | No | Comma-separated labels for runner selection (e.g. `python,gpu`) |
+| `ACTIONS_RUNNER_INPUT_REPLACE` | No | Replace an existing runner with the same name. Defaults to `true`. Set to `false` to disable. |
 
 ### 4. Verify Connection
 

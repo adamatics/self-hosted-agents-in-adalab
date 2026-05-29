@@ -36,6 +36,7 @@ RUN chown -R ${USERNAME}:${GROUPNAME} "/home/${USERNAME}"
 
 USER ${USERNAME}
 ENV APP_DIR=/home/${USERNAME}/runner
+ENV ACTIONS_RUNNER_INPUT_REPLACE=true
 WORKDIR ${APP_DIR}
 
 # The port is required by AdaLab, but will not be used
