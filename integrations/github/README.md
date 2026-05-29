@@ -35,9 +35,10 @@ There are three ways to provide a registration token. Choose one:
     - Recommended for production/automated deployments
     - Requires GitHub Organization owner permission
 - Option B — Personal Access Token
-    - simpler automated deployments
+    - Simpler automated deployments
+    - (Preferably) Use a service account
 - Option C — Manual registration token
-    - quick one-off deployments
+    - Quick one-off deployments
 
 The Options are described below:
 
@@ -80,6 +81,8 @@ The entrypoint generates a short-lived JWT, exchanges it for an installation acc
 #### **Option B — Personal Access Token (simpler automated deployments)**
 
 Set `GH_PAT` to a GitHub PAT. The entrypoint calls the GitHub API at startup to exchange it for a short-lived registration token automatically. The container can be restarted without human intervention.
+
+> **Note:** The PAT is tied to a user account. Prefer using a dedicated service account so the runner does not break if the user leaves the organisation.
 
 See [Required PAT permissions](#required-pat-permissions) below for the exact scopes needed.
 
@@ -150,6 +153,7 @@ API reference: [`POST /repos/{owner}/{repo}/actions/runners/registration-token`]
 ## Tips and Troubleshooting
 
 - When using a manual registration token (`GH_TOKEN`), keep the GitHub page open until the container has registered successfully — closing or refreshing it invalidates the token.
+- If using a PAT against an organisation with SAML SSO enabled, the token must also be explicitly authorised for that organisation in GitHub — correct scopes alone are not enough. Look for the **"Configure SSO"** button next to the token on the [Personal access tokens](https://github.com/settings/tokens) page.
 - The container must expose a port to be deployed as an app. Any value can be used, since nothing will be served.
 - If the container terminates or restarts, the connection might be lost. In that case, the agent needs to be deployed again (Options A and B handle this automatically).
 - For GitHub App auth, the private key PEM can be passed as a multiline env var or a Docker/Kubernetes secret.
