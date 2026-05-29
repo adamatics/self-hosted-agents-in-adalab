@@ -23,16 +23,26 @@ The GitHub Actions agent runs in a container based on Ubuntu 24.04. It automatic
 
 ### 1. Build the Container Image
 
-```bash
+```sh
 cd integrations/github
-docker build -t gh-actions-agent:latest . --build-arg=VERSION=<version>
+docker build -t gh-actions-agent:latest -f Containerfile . --build-arg=VERSION=<version>
 ```
 
 ### 2. Authenticate the Runner
 
 There are three ways to provide a registration token. Choose one:
+- Option A — GitHub App
+    - Recommended for production/automated deployments
+    - Requires GitHub Organization owner permission
+- Option B — Personal Access Token
+    - simpler automated deployments
+- Option C — Manual registration token
+    - quick one-off deployments
 
-#### Option A — GitHub App (recommended for production/automated deployments)
+The Options are described below:
+
+
+#### **Option A — GitHub App (recommended for production/automated deployments)**
 
 A GitHub App authenticates as a non-human identity with no ties to any individual user account. This is the most robust option for persistent deployments.
 
@@ -42,10 +52,10 @@ A GitHub App authenticates as a non-human identity with no ties to any individua
 
 1. Go to your GitHub organisation settings → **Developer settings → GitHub Apps → New GitHub App**.
 2. Give it a name and set the **Homepage URL** to anything (e.g. your org URL).
-3. Under **Permissions → Organisation permissions**, set **Self-hosted runners** to **Read and write**.
-4. Disable webhooks (not needed here).
-5. Create the App, then generate a **private key** — a PEM file will download automatically.
-6. Note the **Client ID** shown on the App's settings page (a string starting with `Iv`, not the numeric App ID).
+3. Disable webhooks (not needed here).
+4. Under **Permissions → Organisation permissions**, set **Self-hosted runners** to **Read and write**.
+5. Note the **Client ID** shown on the App's settings page (a string starting with `Iv`, not the numeric App ID).
+6. Create the App, then generate a **private key** — a PEM file will download automatically.
 7. **Install** the App on your organisation (Settings → Install App → your org).
 8. After installation, note the **Installation ID** from the URL: `https://github.com/organizations/<org>/settings/installations/<installation_id>`.
 
@@ -67,13 +77,13 @@ The entrypoint decodes it at runtime before use.
 
 The entrypoint generates a short-lived JWT, exchanges it for an installation access token, and uses that to fetch the runner registration token — fully non-interactive and restartable.
 
-#### Option B — Personal Access Token (simpler automated deployments)
+#### **Option B — Personal Access Token (simpler automated deployments)**
 
 Set `GH_PAT` to a GitHub PAT. The entrypoint calls the GitHub API at startup to exchange it for a short-lived registration token automatically. The container can be restarted without human intervention.
 
 See [Required PAT permissions](#required-pat-permissions) below for the exact scopes needed.
 
-#### Option C — Manual registration token (quick one-off deployments)
+#### **Option C — Manual registration token (quick one-off deployments)**
 
 Go to the GitHub organisation or repository where the runner should be made available. Navigate to **Actions > Runners**, and trigger the wizard for adding a new self-hosted runner.
 
@@ -87,19 +97,29 @@ Set `GH_TOKEN` to the copied token when starting the container.
 
 Run the agent (locally or as an app) passing the following environment variables:
 
+**Runner scope** — set exactly one:
+
+| Variable | Description |
+|----------|-------------|
+| `GH_ORG` | Organisation name only (e.g. `myorg`). Registers the runner org-wide. |
+| `GH_REPO` | Full repository URL (e.g. `https://github.com/org/repo`). Registers the runner for that repo only. |
+
+**Authentication** — set exactly one group:
+
+| Variable | Option | Description |
+|----------|--------|-------------|
+| `GH_APP_CLIENT_ID` | A — GitHub App | Client ID from the App's settings page |
+| `GH_APP_INSTALLATION_ID` | A — GitHub App | Installation ID of the App on your org |
+| `GH_APP_PRIVATE_KEY` | A — GitHub App | Base64-encoded PEM private key |
+| `GH_PAT` | B — PAT | Personal Access Token; exchanged for a registration token at startup |
+| `GH_TOKEN` | C — Manual | Short-lived registration token copied directly from the GitHub UI |
+
+**Runner identity:**
+
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GH_ORG` | One of | GitHub organisation name (e.g. `myorg`). Use this for organisation-wide runners. |
-| `GH_REPO` | One of | Full URL of the repository the runner should register with (e.g. `https://github.com/org/repo`). Use this for repository-level runners. |
-| `GH_APP_ID` | One of (A) | Numeric GitHub App ID |
-| `GH_APP_INSTALLATION_ID` | One of (A) | Numeric installation ID of the App on your org |
-| `GH_APP_PRIVATE_KEY` | One of (A) | Full PEM content of the App's private key |
-| `GH_PAT` | One of (B) | Personal Access Token used to auto-fetch the registration token |
-| `GH_TOKEN` | One of (C) | Short-lived registration token obtained manually from the GitHub UI |
-| `AGENT_NAME` | Yes | Name to be displayed in GitHub under **Actions > Runners** |
-| `AGENT_LABELS` | No | Comma-separated labels to facilitate runner selection (e.g. `python,gpu`) |
-
-Set either `GH_ORG` (org-wide runner) or `GH_REPO` (repo-level runner), not both.
+| `AGENT_NAME` | Yes | Name displayed in GitHub under **Actions > Runners** |
+| `AGENT_LABELS` | No | Comma-separated labels for runner selection (e.g. `python,gpu`) |
 
 ### 4. Verify Connection
 
