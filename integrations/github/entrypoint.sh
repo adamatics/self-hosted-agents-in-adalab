@@ -180,8 +180,8 @@ require_var "AGENT_NAME" "${AGENT_NAME}" "runner config"
 
 AUTH_FLOW=$(detect_auth_flow)
 
-if [ "${AGENT_RECREATE}" = "true" ] && [ "${AUTH_FLOW}" = "token" ]; then
-    echo "Error: AGENT_RECREATE=true requires GitHub App or PAT auth — a manual GH_TOKEN cannot delete runners" >&2
+if [ "${AGENT_FORCE_RECREATE}" = "true" ] && [ "${AUTH_FLOW}" = "token" ]; then
+    echo "Error: AGENT_FORCE_RECREATE=true requires GitHub App or PAT auth — a manual GH_TOKEN cannot delete runners" >&2
     exit 1
 fi
 
@@ -200,7 +200,7 @@ case "${AUTH_FLOW}" in
 esac
 
 if [ "${AUTH_FLOW}" != "token" ]; then
-    [ "${AGENT_RECREATE}" = "true" ] && delete_existing_runner "${bearer}"
+    [ "${AGENT_FORCE_RECREATE}" = "true" ] && delete_existing_runner "${bearer}"
     export GH_TOKEN=$(get_registration_token "${bearer}")
     unset bearer
 fi

@@ -140,7 +140,7 @@ Run the agent (locally or as an app) passing the following environment variables
 | `AGENT_LABELS` | No | Comma-separated labels for runner selection (e.g. `python,gpu`) |
 | `ACTIONS_RUNNER_INPUT_REPLACE` | No | Replace an existing runner with the same name. Defaults to `true`. Set to `false` to disable. |
 | `ACTIONS_RUNNER_INPUT_RUNNERGROUP` | No | Runner group to register into. Requires `GH_ORG`, and the group must already exist. Names containing spaces are supported. |
-| `AGENT_RECREATE` | No | Set to `true` to delete any existing runner named `AGENT_NAME` via the GitHub API before registering. Use this to move a runner to a different group. Requires GitHub App or PAT auth. Fails if the existing runner is running a job. |
+| `AGENT_FORCE_RECREATE` | No | Set to `true` to delete any existing runner named `AGENT_NAME` via the GitHub API before registering. Use this to move a runner to a different group. Requires GitHub App or PAT auth. Fails if the existing runner is running a job. |
 
 ### 4. Verify Connection
 
