@@ -1,6 +1,6 @@
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
-ARG VERSION="2.325.0"
+ARG VERSION="2.338.2"
 
 RUN apt update && apt upgrade -y
 RUN apt install -y \
