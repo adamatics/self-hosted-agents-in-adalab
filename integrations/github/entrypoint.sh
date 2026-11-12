@@ -32,8 +32,8 @@ validate_target() {
         echo "Error: GH_ORG must be the organisation name only (e.g. 'myorg'), not a URL" >&2
         exit 1
     fi
-    if [ -n "${AGENT_GROUP}" ] && [ -z "${GH_ORG}" ]; then
-        echo "Error: AGENT_GROUP requires GH_ORG — runner groups only exist for organisation runners" >&2
+    if [ -n "${ACTIONS_RUNNER_INPUT_RUNNERGROUP}" ] && [ -z "${GH_ORG}" ]; then
+        echo "Error: ACTIONS_RUNNER_INPUT_RUNNERGROUP requires GH_ORG — runner groups only exist for organisation runners" >&2
         exit 1
     fi
 }
