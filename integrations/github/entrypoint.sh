@@ -32,6 +32,10 @@ validate_target() {
         echo "Error: GH_ORG must be the organisation name only (e.g. 'myorg'), not a URL" >&2
         exit 1
     fi
+    if [ -n "${AGENT_GROUP}" ] && [ -z "${GH_ORG}" ]; then
+        echo "Error: AGENT_GROUP requires GH_ORG — runner groups only exist for organisation runners" >&2
+        exit 1
+    fi
 }
 
 # --- Auth flow detection and validation ---
@@ -102,20 +106,23 @@ get_token_via_app() {
     printf '%s' "${install_token}"
 }
 
-get_registration_token() {
-    local bearer_token="$1"
-    local api_url reg_response reg_token
-
+runners_api_url() {
     if [ -n "${GH_ORG}" ]; then
-        echo "Fetching org-level runner registration token for org: ${GH_ORG}..." >&2
-        api_url="https://api.github.com/orgs/${GH_ORG}/actions/runners/registration-token"
+        printf '%s' "https://api.github.com/orgs/${GH_ORG}/actions/runners"
     else
         local owner repo_name
         owner=$(echo "${GH_REPO}" | awk -F'/' '{print $(NF-1)}')
         repo_name=$(echo "${GH_REPO}" | awk -F'/' '{print $NF}')
-        echo "Fetching repo-level runner registration token for ${owner}/${repo_name}..." >&2
-        api_url="https://api.github.com/repos/${owner}/${repo_name}/actions/runners/registration-token"
+        printf '%s' "https://api.github.com/repos/${owner}/${repo_name}/actions/runners"
     fi
+}
+
+get_registration_token() {
+    local bearer_token="$1"
+    local api_url reg_response reg_token
+
+    api_url="$(runners_api_url)/registration-token"
+    echo "Fetching runner registration token from ${api_url}..." >&2
 
     reg_response=$(curl -s -X POST \
         -H "Authorization: Bearer ${bearer_token}" \
@@ -131,28 +138,72 @@ get_registration_token() {
     printf '%s' "${reg_token}"
 }
 
+delete_existing_runner() {
+    local bearer_token="$1"
+    local base_url list_response runner_id status
+
+    base_url=$(runners_api_url)
+    list_response=$(curl -s -G \
+        -H "Authorization: Bearer ${bearer_token}" \
+        -H "Accept: application/vnd.github+json" \
+        --data-urlencode "name=${AGENT_NAME}" \
+        "${base_url}")
+
+    if ! echo "${list_response}" | jq -e '.runners' > /dev/null 2>&1; then
+        echo "Error: failed to list runners" >&2
+        echo "Response: ${list_response}" >&2
+        exit 1
+    fi
+
+    runner_id=$(echo "${list_response}" | jq -r --arg name "${AGENT_NAME}" '.runners[] | select(.name == $name) | .id')
+    if [ -z "${runner_id}" ]; then
+        echo "No existing runner named '${AGENT_NAME}' found" >&2
+        return
+    fi
+
+    echo "Deleting existing runner '${AGENT_NAME}' (id ${runner_id})..." >&2
+    status=$(curl -s -o /dev/null -w '%{http_code}' -X DELETE \
+        -H "Authorization: Bearer ${bearer_token}" \
+        -H "Accept: application/vnd.github+json" \
+        "${base_url}/${runner_id}")
+    if [ "${status}" != "204" ]; then
+        echo "Error: failed to delete runner ${runner_id} (HTTP ${status}). A runner that is running a job cannot be deleted." >&2
+        exit 1
+    fi
+}
+
 # --- Main ---
 
 validate_target
 
+require_var "AGENT_NAME" "${AGENT_NAME}" "runner config"
+
 AUTH_FLOW=$(detect_auth_flow)
+
+if [ "${AGENT_RECREATE}" = "true" ] && [ "${AUTH_FLOW}" = "token" ]; then
+    echo "Error: AGENT_RECREATE=true requires GitHub App or PAT auth — a manual GH_TOKEN cannot delete runners" >&2
+    exit 1
+fi
 
 case "${AUTH_FLOW}" in
     app)
         validate_base64 "GH_APP_PRIVATE_KEY" "${GH_APP_PRIVATE_KEY}" "GitHub App auth"
         bearer=$(get_token_via_app)
-        export GH_TOKEN=$(get_registration_token "${bearer}")
         ;;
     pat)
-        echo "Fetching registration token using PAT..." >&2
-        export GH_TOKEN=$(get_registration_token "${GH_PAT}")
+        echo "Using PAT for GitHub API calls" >&2
+        bearer="${GH_PAT}"
         ;;
     token)
         echo "Using provided GH_TOKEN directly" >&2
         ;;
 esac
 
-require_var "AGENT_NAME" "${AGENT_NAME}" "runner config"
+if [ "${AUTH_FLOW}" != "token" ]; then
+    [ "${AGENT_RECREATE}" = "true" ] && delete_existing_runner "${bearer}"
+    export GH_TOKEN=$(get_registration_token "${bearer}")
+    unset bearer
+fi
 
 if [ -n "${GH_ORG}" ]; then
     export GH_CONFIG_URL="https://github.com/${GH_ORG}"
